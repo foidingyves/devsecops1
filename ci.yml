@@ -1,0 +1,43 @@
+name: CI DevSecOps
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  devsecops:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build Docker image
+        run: docker build -t fastapi-app ./backend
+
+      - name: Install hadolint
+        run: |
+          sudo apt-get update && sudo apt-get install -y hadolint
+          hadolint backend/Dockerfile
+
+      - name: Lint YAML files
+        run: |
+          pip install yamllint
+          yamllint docker-compose.yml
+          yamllint k8s/
+
+      - name: Install Trivy
+        run: |
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
+
+      - name: Trivy scan - dependencies
+        run: trivy fs --severity HIGH,CRITICAL ./backend/app
+
+      - name: Trivy scan - Docker image
+        run: trivy image --severity HIGH,CRITICAL fastapi-app
