@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pod
+spec:
+  containers:
+    - name: test-container
+      image: nginx
+      securityContext:
+        runAsUser: 0  # Ce sera bloqué par la règle
